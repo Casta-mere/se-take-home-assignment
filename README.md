@@ -50,11 +50,15 @@ You may demostrate your final funtioning prototype with **one and only one** of 
 
 ### Classes
 
-- [ ] 订单类，可以存/取订单，需要有锁，能处理退单
-  - [ ] 两个双端队列，分别存普通和 VIP 订单
-- [ ] Robots 类
-  - [ ] 获取订单，添加计时器
-- [ ] 管理类
-  - [ ] 包含一个订单类和 Robots 类数组，Robots 数组需要多线程
-  - [ ] 管理 I/O
-  - [ ] 析构 Robots 要处理退单操作
+- [x] 订单类，可以存/取订单，需要有锁，能处理退单
+  - [x] 两个双端队列，分别存普通和 VIP 订单
+- [x] Robots 类
+  - [x] 获取订单，添加计时器
+- [x] 管理类
+  - [x] 包含一个订单类和 Robots 类数组，Robots 数组需要多线程
+  - [x] 管理 I/O
+  - [x] 析构 Robots 要处理退单操作
+
+### 关键逻辑
+
+-bot 时，要将当前订单放回对应队列首
