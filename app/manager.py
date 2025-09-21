@@ -12,9 +12,8 @@ from __future__ import annotations
 
 from typing import Literal, Optional, Dict, Any, TYPE_CHECKING
 from .domain import Order, OrderType
-if TYPE_CHECKING:
-    from .queues import PendingQueue
-    from .robots import Robot
+from .queues import PendingQueue
+from .robots import Robot
 
 
 class Manager:
@@ -29,62 +28,119 @@ class Manager:
     """
 
     def __init__(self) -> None:
-        """初始化管理器并在内部创建队列，计数器从 1 开始。
-
-        约定：
-        - self.queue: PendingQueue 由此处自行实例化（而非外部注入）
-        - self.bots: list[Robot] 初始为空
-        - self.next_order_id: int = 1
-        - self.next_bot_id: int = 1
-        """
-        raise NotImplementedError("Manager.__init__ is not implemented.")
+        """初始化管理器并在内部创建队列，计数器从 1 开始。"""
+        self.queue = PendingQueue()
+        self.bots: list[Robot] = []
+        self.next_order_id: int = 1
+        self.next_bot_id: int = 1
+        self.completed: list[Order] = []
 
     def new_order(self, order_type: OrderType) -> dict:
         """创建新订单（唯一递增 id），入对应队列尾部，返回订单字典。"""
-        raise NotImplementedError("Manager.new_order is not implemented.")
+        oid = self.next_order_id
+        self.next_order_id += 1
+        order = Order(id=oid, type=order_type, status="PENDING")
+        if order_type == "VIP":
+            self.queue.put_vip(order)
+        else:
+            self.queue.put_normal(order)
+        return {"ok": True, "order": {"id": order.id, "type": order.type, "status": order.status}}
 
     def add_bot(self) -> dict:
         """创建并启动一个新机器人，返回其状态。"""
-        raise NotImplementedError("Manager.add_bot is not implemented.")
+        bid = self.next_bot_id
+        self.next_bot_id += 1
+        bot = Robot(bid, self.queue, on_complete=self._on_complete)
+        self.bots.append(bot)
+        bot.start()
+        return {"ok": True, "bot": bot.status()}
 
     def remove_bot(self) -> Optional[dict]:
         """移除“最新”机器人（创建序最后一个）。若无机器人返回 None。"""
-        raise NotImplementedError("Manager.remove_bot is not implemented.")
+        if not self.bots:
+            return None
+        bot = self.bots.pop()
+        bot.stop(join=True, requeue_to_head=True)
+        return {"ok": True, "bot_id": bot.status().get("bot_id")}
 
     def status(self) -> Dict[str, Any]:
         """返回系统快照：队列与所有机器人状态。"""
-        raise NotImplementedError("Manager.status is not implemented.")
+        return {
+            "queue": self.queue.snapshot(max_items_per_queue=50),
+            "bots": [b.status() for b in self.bots],
+            "completed_count": len(self.completed),
+            "completed_ids": [o.id for o in self.completed[-50:]],
+        }
 
     def shutdown(self) -> None:
         """优雅关闭：停止所有机器人并等待线程退出。"""
-        raise NotImplementedError("Manager.shutdown is not implemented.")
+        while self.bots:
+            bot = self.bots.pop()
+            bot.stop(join=True)
 
         # -------------------- CLI / CMD I/O --------------------
 
     def handle_cmd(self, line: str) -> Dict[str, Any]:
-            """解析并执行一条命令行，返回结构化结果（不直接打印）。
+        """解析并执行一条命令行，返回结构化结果（不直接打印）。
 
-            认可指令（大小写统一转小写处理）：
-            - "new-normal" / "nn"      -> 创建普通订单
-            - "new-vip" / "nv"         -> 创建 VIP 订单
-            - "+bot" / "add-bot"        -> 新增一个机器人
-            - "-bot" / "remove-bot"     -> 移除最新机器人
-            - "status"                  -> 返回系统快照（队列 + 机器人）
-            - "exit" / "quit"          -> 请求退出（由外层 CLI 决定是否终止进程）
+        认可指令（大小写统一转小写处理）：
+        - "new-normal" / "nn"      -> 创建普通订单
+        - "new-vip" / "nv"         -> 创建 VIP 订单
+        - "+bot" / "add-bot"        -> 新增一个机器人
+        - "-bot" / "remove-bot"     -> 移除最新机器人
+        - "status"                  -> 返回系统快照（队列 + 机器人）
+        - "clear" / "cls"          -> 清屏
+        - "exit" / "quit"          -> 请求退出（由外层 CLI 决定是否终止进程）
 
-            约定：
-            - 本方法不做阻塞 I/O，不直接读取/打印；只做解析与调度。
-            - 返回值建议格式：
-                {
-                    "ok": bool,
-                    "cmd": str,
-                    "data": Any | None,
-                    "error": str | None,
-                }
-            - 未知命令：ok=False，并附带 error 与 usage。
-            """
-            raise NotImplementedError("Manager.handle_cmd is not implemented.")
+        约定：
+        - 本方法不做阻塞 I/O，不直接读取/打印；只做解析与调度。
+        - 返回值建议格式：
+          {
+            "ok": bool,
+            "cmd": str,
+            "data": Any | None,
+            "error": str | None,
+          }
+        - 未知命令：ok=False，并附带 error 与 usage。
+        """
+        cmd = (line or "").strip().lower()
+        if not cmd:
+            return {"ok": False, "cmd": cmd, "error": "empty command", "usage": self.help_text()}
+        if cmd in ("help", "h", "?"):
+            return {"ok": True, "cmd": cmd, "data": self.help_text()}
+        if cmd in ("new-normal", "nn"):
+            return self.new_order("NORMAL")
+        if cmd in ("new-vip", "nv"):
+            return self.new_order("VIP")
+        if cmd in ("+bot", "add-bot"):
+            return self.add_bot()
+        if cmd in ("-bot", "remove-bot"):
+            data = self.remove_bot()
+            return data or {"ok": False, "cmd": cmd, "error": "no bot to remove"}
+        if cmd in ("status",):
+            return {"ok": True, "cmd": cmd, "data": self.status()}
+        if cmd in ("clear", "cls"):
+            return {"ok": True, "cmd": cmd, "data": {"clear": True}}
+        if cmd in ("exit", "quit"):
+            return {"ok": True, "cmd": cmd, "data": {"exit": True}}
+        return {"ok": False, "cmd": cmd, "error": f"unknown command: {cmd}", "usage": self.help_text()}
 
     def help_text(self) -> str:
-            """返回 CLI 帮助文本，供外层打印。"""
-            raise NotImplementedError("Manager.help_text is not implemented.")
+        """返回 CLI 帮助文本，供外层打印。"""
+        return (
+            "Commands:\n"
+            "  new-normal | nn   - 新建普通订单\n"
+            "  new-vip    | nv   - 新建 VIP 订单\n"
+            "  +bot       | add-bot   - 增加一个机器人\n"
+            "  -bot       | remove-bot- 移除最新机器人\n"
+            "  clear | cls        - 清屏\n"
+            "  status             - 查看系统状态\n"
+            "  help|h|?           - 帮助\n"
+            "  exit|quit          - 退出\n"
+        )
+
+    # -------------------- 回调 --------------------
+
+    def _on_complete(self, order: Order) -> None:
+        """当某机器人完成一个订单时的回调。"""
+        self.completed.append(order)
