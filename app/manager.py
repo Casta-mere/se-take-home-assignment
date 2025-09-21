@@ -28,8 +28,15 @@ class Manager:
     - completed: list[dict] （可选，或让 CLI 直接从 queue.snapshot 获取）
     """
 
-    def __init__(self, queue: "PendingQueue") -> None:
-        """用传入的队列初始化管理器，计数器从 1 开始。"""
+    def __init__(self) -> None:
+        """初始化管理器并在内部创建队列，计数器从 1 开始。
+
+        约定：
+        - self.queue: PendingQueue 由此处自行实例化（而非外部注入）
+        - self.bots: list[Robot] 初始为空
+        - self.next_order_id: int = 1
+        - self.next_bot_id: int = 1
+        """
         raise NotImplementedError("Manager.__init__ is not implemented.")
 
     def new_order(self, order_type: OrderType) -> dict:
@@ -51,3 +58,33 @@ class Manager:
     def shutdown(self) -> None:
         """优雅关闭：停止所有机器人并等待线程退出。"""
         raise NotImplementedError("Manager.shutdown is not implemented.")
+
+        # -------------------- CLI / CMD I/O --------------------
+
+    def handle_cmd(self, line: str) -> Dict[str, Any]:
+            """解析并执行一条命令行，返回结构化结果（不直接打印）。
+
+            认可指令（大小写统一转小写处理）：
+            - "new-normal" / "nn"      -> 创建普通订单
+            - "new-vip" / "nv"         -> 创建 VIP 订单
+            - "+bot" / "add-bot"        -> 新增一个机器人
+            - "-bot" / "remove-bot"     -> 移除最新机器人
+            - "status"                  -> 返回系统快照（队列 + 机器人）
+            - "exit" / "quit"          -> 请求退出（由外层 CLI 决定是否终止进程）
+
+            约定：
+            - 本方法不做阻塞 I/O，不直接读取/打印；只做解析与调度。
+            - 返回值建议格式：
+                {
+                    "ok": bool,
+                    "cmd": str,
+                    "data": Any | None,
+                    "error": str | None,
+                }
+            - 未知命令：ok=False，并附带 error 与 usage。
+            """
+            raise NotImplementedError("Manager.handle_cmd is not implemented.")
+
+    def help_text(self) -> str:
+            """返回 CLI 帮助文本，供外层打印。"""
+            raise NotImplementedError("Manager.help_text is not implemented.")
