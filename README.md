@@ -62,3 +62,10 @@ You may demostrate your final funtioning prototype with **one and only one** of 
 ### 关键逻辑
 
 -bot 时，要将当前订单放回对应队列首
+
+### Run
+
+```bash
+python -m app.main
+# Press Help
+```
