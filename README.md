@@ -1,5 +1,7 @@
 ## FeedMe Software Engineer Take Home Assignment
+
 Below is a take home assignment before the interview of the position. You are required to
+
 1. Understand the situation and use case. You may contact the interviewer for further clarification.
 2. Fork this repo and implement the requirement with your most familiar language and framework or **AI coding agent**.
 3. Complete the requirement and perform your own testing.
@@ -8,16 +10,20 @@ Below is a take home assignment before the interview of the position. You are re
 6. Bring the source code and functioning prototype to the interview session.
 
 ### Situation
-McDonald is transforming their business during COVID-19. They wish to build the automated cooking bots to reduce workforce and increase their efficiency. As one of the software engineer in the project. You task is to create an order controller which handle the order control flow. 
+
+McDonald is transforming their business during COVID-19. They wish to build the automated cooking bots to reduce workforce and increase their efficiency. As one of the software engineer in the project. You task is to create an order controller which handle the order control flow.
 
 ### User Story
+
 As below is part of the user story:
+
 1. As McDonald's normal customer, after I submitted my order, I wish to see my order flow into "PENDING" area. After the cooking bot process my order, I want to see it flow into to "COMPLETE" area.
-2. As McDonald's VIP member, after I submitted my order, I want my order being process first before all order by normal customer.  However if there's existing order from VIP member, my order should queue behind his/her order.
+2. As McDonald's VIP member, after I submitted my order, I want my order being process first before all order by normal customer. However if there's existing order from VIP member, my order should queue behind his/her order.
 3. As McDonald's manager, I want to increase or decrease number of cooking bot available in my restaurant. When I increase a bot, it should immediately process any pending order. When I decrease a bot, the processing order should remain un-process.
 4. As McDonald bot, it can only pickup and process 1 order at a time, each order required 10 seconds to complete process.
 
 ### Requirements
+
 1. When "New Normal Order" clicked, a new order should show up "PENDING" Area.
 2. When "New VIP Order" clicked, a new order should show up in "PENDING" Area. It should place in-front of all existing "Normal" order but behind of all existing "VIP" order.
 3. The order number should be unique and increasing.
@@ -27,12 +33,28 @@ As below is part of the user story:
 7. No data persistance is needed for this prototype, you may perform all the process inside memory.
 
 ### Functioning Prototype
+
 You may demostrate your final funtioning prototype with **one and only one** of the following method:
+
 - CLI application
 - UI application
 - E2E test case
 
 ### Tips on completing this task
+
 - Testing, testing and testing. Make sure the prototype is functioning and meeting all the requirements.
 - Treat this assignment as a vibe coding, don't over engineer it. Try to scope your working hour within 30 min. However, ensure you read and understand what your code doing.
 - Complete the implementation as clean as possible, clean code is a strong plus point, do not bring in all the fancy tech stuff.
+
+## Solution
+
+### Classes
+
+- [ ] 订单类，可以存/取订单，需要有锁，能处理退单
+  - [ ] 两个双端队列，分别存普通和 VIP 订单
+- [ ] Robots 类
+  - [ ] 获取订单，添加计时器
+- [ ] 管理类
+  - [ ] 包含一个订单类和 Robots 类数组，Robots 数组需要多线程
+  - [ ] 管理 I/O
+  - [ ] 析构 Robots 要处理退单操作
