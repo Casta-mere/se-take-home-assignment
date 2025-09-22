@@ -63,6 +63,10 @@ You may demostrate your final funtioning prototype with **one and only one** of 
 
 -bot 时，要将当前订单放回对应队列首
 
+### Requirements
+
+python3.0 +
+
 ### Run
 
 ```bash
